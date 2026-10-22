@@ -1,4 +1,3 @@
-
 name: Build Android APK
 
 on:
@@ -22,7 +21,34 @@ jobs:
         run: |
           mkdir project
           unzip -q AronArikAIStudio-PhoneBuild.zip -d project
-          find project -name settings.gradle -o -name settings.gradle.kts
+          SETTINGS_FILE="$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)"
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "Android project settings file not found"
+            exit 1
+          fi
+          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
+          APP_GRADLE="$PROJECT_DIR/app/build.gradle.kts"
+          if [ ! -f "$APP_GRADLE" ]; then
+            APP_GRADLE="$(find "$PROJECT_DIR" -path '*/app/build.gradle.kts' -type f | head -n 1)"
+          fi
+          if [ -z "$APP_GRADLE" ] || [ ! -f "$APP_GRADLE" ]; then
+            echo "App build.gradle.kts not found"
+            exit 1
+          fi
+          cat >> "$APP_GRADLE" <<'EOF'
+
+          // Build compatibility fix: align Java and Kotlin bytecode targets.
+          android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+          echo "Applied Java/Kotlin JVM target compatibility fix to $APP_GRADLE"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -31,11 +57,12 @@ jobs:
 
       - name: Build debug APK
         run: |
-          PROJECT_DIR=$(dirname "$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)")
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+          SETTINGS_FILE="$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)"
+          if [ -z "$SETTINGS_FILE" ]; then
             echo "Android project settings file not found"
             exit 1
           fi
+          PROJECT_DIR="$(dirname "$SETTINGS_FILE")"
           cd "$PROJECT_DIR"
           gradle --no-daemon assembleDebug
 
