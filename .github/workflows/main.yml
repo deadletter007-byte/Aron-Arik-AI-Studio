@@ -1,3 +1,4 @@
+
 name: Build Android APK
 
 on:
@@ -10,9 +11,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find project ZIP
+      - name: Inspect repository files
         run: |
-          pwd
-          ls -la
-          find . -maxdepth 3 -type f
-          unzip -l "./AronArikAIStudio-PhoneBuild-v2.zip"
+          echo "Repository files:"
+          ls -lah
+          echo "ZIP files:"
+          find . -type f -iname "*.zip"
